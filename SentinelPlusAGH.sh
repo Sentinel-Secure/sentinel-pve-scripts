@@ -13,7 +13,7 @@ DISK_SIZE="4G"                       # Taille du disque
 BRIDGE="vmbr0"                       # Bridge réseau
 
 # Dépôt GitHub
-REPO_URL="https://github.com/Sentinel-Secure/sentinel.git"
+REPO_URL="https://github.com/Sentinel-Secure/sentinel-pve-script-backend.git"
 INSTALL_DIR="/opt/sentinel"
 
 echo "=== 1. Recherche du dernier template Debian 12 disponible ==="
