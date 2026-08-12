@@ -2,23 +2,33 @@
 set -e
 
 # --- Configuration du conteneur LXC ---
-CT_ID=110                            # ID du conteneur (à adapter)
+CT_ID=110                            # ID du conteneur
 HOSTNAME="sentinel-agh"              # Nom d'hôte
 STORAGE="local-lvm"                  # Stockage pour le disque LXC
 TEMPLATE_STORAGE="local"             # Stockage pour les templates
-RAM=512                              # RAM en Mo (amplement suffisant)
+RAM=512                              # RAM en Mo
 SWAP=512                             # SWAP en Mo
 CORES=1                              # Cœurs CPU
 DISK_SIZE="4G"                       # Taille du disque
 BRIDGE="vmbr0"                       # Bridge réseau
-OSTEMPLATE="debian-12-standard_12.2-1_amd64.tar.zst"
 
 # Dépôt GitHub
 REPO_URL="https://github.com/Sentinel-Secure/sentinel.git"
 INSTALL_DIR="/opt/sentinel"
 
-echo "=== 1. Téléchargement du template Debian 12 si nécessaire ==="
-pveam update
+echo "=== 1. Recherche du dernier template Debian 12 disponible ==="
+pveam update > /dev/null
+
+# Récupération automatique du nom exact de l'image Debian 12
+OSTEMPLATE=$(pveam available -section system | grep -i "debian-12-standard" | awk '{print $2}' | tail -n1)
+
+if [ -z "$OSTEMPLATE" ]; then
+    echo "❌ Erreur : Impossible de trouver un template Debian 12 dans le dépôt Proxmox."
+    exit 1
+fi
+
+echo "Template trouvé : $OSTEMPLATE"
+
 if ! pveam list $TEMPLATE_STORAGE | grep -q "$OSTEMPLATE"; then
     echo "Téléchargement du template $OSTEMPLATE..."
     pveam download $TEMPLATE_STORAGE $OSTEMPLATE
@@ -50,7 +60,7 @@ pct exec $CT_ID -- bash -c "git clone $REPO_URL $INSTALL_DIR"
 echo "=== 6. Configuration de l'environnement Python ==="
 pct exec $CT_ID -- bash -c "python3 -m venv $INSTALL_DIR/venv"
 pct exec $CT_ID -- bash -c "$INSTALL_DIR/venv/bin/pip install --upgrade pip"
-pct exec $CT_ID -- bash -c "$INSTALL_DIR/venv/bin/pip install python-dotenv requests" # Modules courants requis pour AGH
+pct exec $CT_ID -- bash -c "$INSTALL_DIR/venv/bin/pip install python-dotenv requests"
 
 echo "=== 7. Configuration du fichier d'environnement (.env) ==="
 pct exec $CT_ID -- bash -c "if [ -f $INSTALL_DIR/.env.example ] && [ ! -f $INSTALL_DIR/.env ]; then cp $INSTALL_DIR/.env.example $INSTALL_DIR/.env; fi"
@@ -76,10 +86,11 @@ EOF"
 
 pct exec $CT_ID -- bash -c "systemctl daemon-reload && systemctl enable --now sentinel.service"
 
-echo "=== Installation terminée ! ==="
+echo ""
+echo "=== Installation terminée avec succès ! ==="
 echo "⚠️ N'oubliez pas d'éditer le fichier .env avec vos identifiants AdGuard Home :"
 echo "   pct exec $CT_ID -- nano $INSTALL_DIR/.env"
 echo "   pct exec $CT_ID -- systemctl restart sentinel.service"
 echo ""
-echo "Statut du service Sentinel :"
+echo "Statut actuel du service :"
 pct exec $CT_ID -- systemctl status sentinel.service --no-pager
