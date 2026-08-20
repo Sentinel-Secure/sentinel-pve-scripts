@@ -81,9 +81,9 @@ pct start $CT_ID
 sleep 5
 msg_ok "Container started."
 
-# 5. System Dependencies
+# 5. System Dependencies & Locale Fix
 msg_info "Installing system dependencies..."
-pct exec $CT_ID -- bash -c "apt-get update >/dev/null && apt-get install -y git python3 python3-pip python3-venv python3-dotenv >/dev/null"
+pct exec $CT_ID -- bash -c "export DEBIAN_FRONTEND=noninteractive LC_ALL=C.UTF-8 && apt-get update >/dev/null && apt-get install -y git python3 python3-pip python3-venv python3-dotenv locales >/dev/null && sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen && locale-gen >/dev/null"
 msg_ok "System dependencies installed."
 
 # 6. Clone Repository
@@ -125,14 +125,22 @@ SERVICE"
 pct exec $CT_ID -- bash -c "systemctl daemon-reload && systemctl enable --now sentinel.service" > /dev/null
 msg_ok "Sentinel service enabled and started."
 
-# 10. Enable Auto-Logon on tty1
-msg_info "Configuring Automatic Login (Auto-Logon) on console..."
-pct exec $CT_ID -- bash -c "mkdir -p /etc/systemd/system/getty@tty1.service.d"
+# 10. Enable Auto-Logon on Console (tty1 + container console)
+msg_info "Configuring Automatic Login (Auto-Logon) on LXC console..."
+pct exec $CT_ID -- bash -c "mkdir -p /etc/systemd/system/getty@tty1.service.d /etc/systemd/system/container-getty@.service.d"
+
 pct exec $CT_ID -- bash -c "cat <<AUTOLOGIN > /etc/systemd/system/getty@tty1.service.d/override.conf
 [Service]
 ExecStart=
 ExecStart=-/sbin/agetty --autologin root --noclear %I \$TERM
 AUTOLOGIN"
+
+pct exec $CT_ID -- bash -c "cat <<AUTOLOGIN > /etc/systemd/system/container-getty@.service.d/override.conf
+[Service]
+ExecStart=
+ExecStart=-/sbin/agetty --autologin root --noclear --keep-baud tty%I 115200,38400,9600 \$TERM
+AUTOLOGIN"
+
 pct exec $CT_ID -- systemctl daemon-reload
 msg_ok "Auto-logon enabled."
 
