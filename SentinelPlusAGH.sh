@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-# --- Couleurs & Formats (Style Community Scripts) ---
+# --- Colors & Output Formatting (Community Scripts Style) ---
 YW=$(echo "\033[33m")
 BL=$(echo "\033[36m")
 RD=$(echo "\033[31m")
@@ -16,19 +16,17 @@ msg_error() { echo -e "${RD}[ERROR]${CL} $1"; }
 clear
 echo -e "${BL}"
 cat << "EOF"
-  ******** ******** ****     ** ********** ** ****     ** ******** **             *******  **       **     **  ********       ********   *******   *******             **       ********  **      **
- **////// /**///// /**/**   /**/////**/// /**/**/**   /**/**///// /**            /**////**/**      /**    /** **//////       /**/////   **/////** /**////**           ****     **//////**/**     /**
-/**       /**      /**//**  /**    /**    /**/**//**  /**/**      /**            /**   /**/**      /**    /**/**             /**       **     //**/**   /**          **//**   **      // /**     /**
-/*********/******* /** //** /**    /**    /**/** //** /**/******* /**            /******* /**      /**    /**/*********      /******* /**      /**/*******          **  //** /**         /**********
-////////**/**////  /**  //**/**    /**    /**/**  //**/**/**////  /**            /**////  /**      /**    /**////////**      /**////  /**      /**/**///**         **********/**    *****/**//////**
-       /**/**      /**   //****    /**    /**/**   //****/**      /**            /**      /**      /**    /**       /**      /**      //**     ** /**  //**       /**//////**//**  ////**/**     /**
- ******** /********/**    //***    /**    /**/**    //***/********/********      /**      /********//*******  ********       /**       //*******  /**   //**      /**     /** //******** /**     /**
-////////  //////// //      ///     //     // //      /// //////// ////////       //       ////////  ///////  ////////        //         ///////   //     //       //      //   ////////  //      // 
+   _____ ______ _   _ _______ _____ _   _ ______ _        _____  _     _    _  _____ 
+  / ____|  ____| \ | |__   __|_   _| \ | |  ____| |      |  __ \| |   | |  | |/ ____|
+ | (___ | |__  |  \| |  | |    | | |  \| | |__  | |      | |__) | |   | |  | | (___  
+  \___ \|  __| | . ` |  | |    | | | . ` |  __| | |      |  ___/| |   | |  | |\___ \ 
+  ____) | |____| |\  |  | |   _| |_| |\  | |____| |____  | |    | |___| |__| |____) |
+ |_____/|______|_| \_|  |_|  |_____|_| \_|______|______| |_|    |______\____/|_____/ 
 EOF
 echo -e "${CL}"
 echo -e "${BOLD}--- Sentinel Plus for AdGuard Home Installer ---${CL}\n"
 
-# --- Configuration basique ---
+# --- Basic Configuration ---
 HOSTNAME="sentinel"
 STORAGE="local-lvm"
 TEMPLATE_STORAGE="local"
@@ -41,29 +39,29 @@ BRIDGE="vmbr0"
 REPO_URL="https://github.com/Sentinel-Secure/sentinel-pve-script-backend.git"
 INSTALL_DIR="/opt/sentinel"
 
-# 1. Obtenir l'ID conteneur
-msg_info "Recherche du premier ID conteneur disponible..."
+# 1. Fetch available Container ID
+msg_info "Searching for next available Container ID..."
 CT_ID=$(pvesh get /cluster/nextid)
-msg_ok "ID attribué : ${BOLD}$CT_ID${CL}"
+msg_ok "Assigned Container ID: ${BOLD}$CT_ID${CL}"
 
-# 2. Template Debian 12
-msg_info "Mise à jour et recherche du template Debian 12..."
+# 2. Fetch Debian 12 Template
+msg_info "Updating template list and finding latest Debian 12..."
 pveam update > /dev/null
 OSTEMPLATE=$(pveam available -section system | grep -i "debian-12-standard" | awk '{print $2}' | tail -n1)
 
 if [ -z "$OSTEMPLATE" ]; then
-    msg_error "Impossible de trouver un template Debian 12 dans le dépôt Proxmox."
+    msg_error "Could not find a valid Debian 12 template in the Proxmox repository."
     exit 1
 fi
 
 if ! pveam list $TEMPLATE_STORAGE | grep -q "$OSTEMPLATE"; then
-    msg_info "Téléchargement du template $OSTEMPLATE..."
+    msg_info "Downloading template $OSTEMPLATE..."
     pveam download $TEMPLATE_STORAGE $OSTEMPLATE > /dev/null
 fi
-msg_ok "Template prêt : $OSTEMPLATE"
+msg_ok "Template ready: $OSTEMPLATE"
 
-# 3. Création du conteneur
-msg_info "Création du conteneur LXC (ID: $CT_ID)..."
+# 3. Create Container
+msg_info "Creating LXC Container (ID: $CT_ID)..."
 pct create $CT_ID "$TEMPLATE_STORAGE:vztmpl/$OSTEMPLATE" \
     --ostype debian \
     --hostname $HOSTNAME \
@@ -75,37 +73,37 @@ pct create $CT_ID "$TEMPLATE_STORAGE:vztmpl/$OSTEMPLATE" \
     --net0 name=eth0,bridge=$BRIDGE,ip=dhcp \
     --onboot 1 \
     --unprivileged 1 > /dev/null
-msg_ok "Conteneur $CT_ID créé avec succès."
+msg_ok "Container $CT_ID created successfully."
 
-# 4. Démarrage
-msg_info "Démarrage du conteneur..."
+# 4. Start Container
+msg_info "Starting container..."
 pct start $CT_ID
 sleep 5
-msg_ok "Conteneur démarré."
+msg_ok "Container started."
 
-# 5. Dépendances système
-msg_info "Installation des dépendances système..."
+# 5. System Dependencies
+msg_info "Installing system dependencies..."
 pct exec $CT_ID -- bash -c "apt-get update >/dev/null && apt-get install -y git python3 python3-pip python3-venv python3-dotenv >/dev/null"
-msg_ok "Dépendances système installées."
+msg_ok "System dependencies installed."
 
-# 6. Clonage
-msg_info "Clonage du dépôt Sentinel..."
+# 6. Clone Repository
+msg_info "Cloning Sentinel repository..."
 pct exec $CT_ID -- bash -c "git clone $REPO_URL $INSTALL_DIR" > /dev/null
-msg_ok "Dépôt cloné dans $INSTALL_DIR."
+msg_ok "Repository cloned into $INSTALL_DIR."
 
-# 7. Environnement Python
-msg_info "Configuration du Virtualenv Python..."
+# 7. Python Environment
+msg_info "Setting up Python Virtual Environment..."
 pct exec $CT_ID -- bash -c "python3 -m venv $INSTALL_DIR/venv"
 pct exec $CT_ID -- bash -c "$INSTALL_DIR/venv/bin/pip install --upgrade pip requests python-dotenv" > /dev/null
-msg_ok "Environnement Python configuré."
+msg_ok "Python environment configured."
 
-# 8. Fichier .env
-msg_info "Préparation du fichier de configuration .env..."
+# 8. Environment File Setup
+msg_info "Preparing configuration file (.env)..."
 pct exec $CT_ID -- bash -c "if [ -f $INSTALL_DIR/.env.example ] && [ ! -f $INSTALL_DIR/.env ]; then cp $INSTALL_DIR/.env.example $INSTALL_DIR/.env; fi"
-msg_ok "Fichier .env initialisé."
+msg_ok ".env file initialized."
 
-# 9. Création du service Systemd
-msg_info "Création du service Systemd..."
+# 9. Create Systemd Service
+msg_info "Creating Systemd service..."
 pct exec $CT_ID -- bash -c "cat <<SERVICE > /etc/systemd/system/sentinel.service
 [Unit]
 Description=Sentinel Plus for AdGuard Home Daemon
@@ -125,27 +123,38 @@ WantedBy=multi-user.target
 SERVICE"
 
 pct exec $CT_ID -- bash -c "systemctl daemon-reload && systemctl enable --now sentinel.service" > /dev/null
-msg_ok "Service Sentinel activé et démarré."
+msg_ok "Sentinel service enabled and started."
 
-# 10. Redirection de la console sur les logs du service
-msg_info "Configuration de la console interactive sur les logs..."
+# 10. Enable Auto-Logon on tty1
+msg_info "Configuring Automatic Login (Auto-Logon) on console..."
+pct exec $CT_ID -- bash -c "mkdir -p /etc/systemd/system/getty@tty1.service.d"
+pct exec $CT_ID -- bash -c "cat <<AUTOLOGIN > /etc/systemd/system/getty@tty1.service.d/override.conf
+[Service]
+ExecStart=
+ExecStart=-/sbin/agetty --autologin root --noclear %I \$TERM
+AUTOLOGIN"
+pct exec $CT_ID -- systemctl daemon-reload
+msg_ok "Auto-logon enabled."
+
+# 11. Redirect Console to Live Service Logs
+msg_info "Configuring console to auto-display live service logs..."
 pct exec $CT_ID -- bash -c "cat << 'EOF' >> /root/.bashrc
 
-# Affichage automatique des logs Sentinel à la connexion console
+# Automatic live log display upon console login
 if [ -t 0 ]; then
-    echo -e '\033[36m=== Logs en direct de Sentinel (Appuyez sur Ctrl+C pour quitter la vue des logs) ===\033[0m'
+    echo -e '\033[36m=== Sentinel Live Logs (Press Ctrl+C to exit log view) ===\033[0m'
     journalctl -u sentinel.service -f -n 50
 fi
 EOF"
-msg_ok "Console configurée."
+msg_ok "Console and logs configured."
 
-# --- Résumé Final ---
+# --- Final Summary ---
 echo -e "\n${GN}======================================================${CL}"
-echo -e "${BOLD}${GN}   Installation de Sentinel terminée avec succès !${CL}"
+echo -e "${BOLD}${GN}   Sentinel Installation Completed Successfully!${CL}"
 echo -e "${GN}======================================================${CL}\n"
-echo -e "  ${BOLD}Conteneur ID :${CL} $CT_ID"
-echo -e "  ${BOLD}Nom d'hôte   :${CL} $HOSTNAME"
-echo -e "\n${YW}⚠️ Prochaine étape obligatoire :${CL}"
-echo -e " Éditez vos accès AdGuard Home dans le fichier .env :"
+echo -e "  ${BOLD}Container ID :${CL} $CT_ID"
+echo -e "  ${BOLD}Hostname     :${CL} $HOSTNAME"
+echo -e "\n${YW}⚠️ Action Required:${CL}"
+echo -e " Configure your AdGuard Home credentials in the .env file:"
 echo -e " ${BL}pct exec $CT_ID -- nano /opt/sentinel/.env${CL}"
 echo -e " ${BL}pct exec $CT_ID -- systemctl restart sentinel.service${CL}\n"
