@@ -8,7 +8,7 @@ TEMPLATE_STORAGE="local"             # Stockage pour les templates
 RAM=512                              # RAM en Mo
 SWAP=512                             # SWAP en Mo
 CORES=1                              # Cœurs CPU
-DISK_SIZE="4G"                       # Taille du disque
+DISK_SIZE="4"                       # Taille du disque (Taille en go)
 BRIDGE="vmbr0"                       # Bridge réseau
 
 # Dépôt GitHub source
