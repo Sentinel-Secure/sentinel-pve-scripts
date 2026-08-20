@@ -125,24 +125,17 @@ SERVICE"
 pct exec $CT_ID -- bash -c "systemctl daemon-reload && systemctl enable --now sentinel.service" > /dev/null
 msg_ok "Sentinel service enabled and started."
 
-# 10. Enable Auto-Logon on Console (tty1 + container console)
-msg_info "Configuring Automatic Login (Auto-Logon) on LXC console..."
-pct exec $CT_ID -- bash -c "mkdir -p /etc/systemd/system/getty@tty1.service.d /etc/systemd/system/container-getty@.service.d"
-
-pct exec $CT_ID -- bash -c "cat <<AUTOLOGIN > /etc/systemd/system/getty@tty1.service.d/override.conf
+# 10. Configure Auto-Logon on Console (Community Scripts Method)
+msg_info "Configuring Automatic Login..."
+pct exec $CT_ID -- bash -c "sed -i 's/GETTY_ARGS=\"--noclear\"/GETTY_ARGS=\"--noclear --autologin root\"/g' /etc/systemd/system/getty.target.wants/getty@tty1.service"
+pct exec $CT_ID -- bash -c "mkdir -p /etc/systemd/system/console-getty.service.d"
+pct exec $CT_ID -- bash -c "cat <<EOF > /etc/systemd/system/console-getty.service.d/override.conf
 [Service]
 ExecStart=
-ExecStart=-/sbin/agetty --autologin root --noclear %I \$TERM
-AUTOLOGIN"
-
-pct exec $CT_ID -- bash -c "cat <<AUTOLOGIN > /etc/systemd/system/container-getty@.service.d/override.conf
-[Service]
-ExecStart=
-ExecStart=-/sbin/agetty --autologin root --noclear --keep-baud tty%I 115200,38400,9600 \$TERM
-AUTOLOGIN"
-
+ExecStart=-/sbin/agetty --autologin root --noclear --keep-baud console 115200,38400,9600 \$TERM
+EOF"
 pct exec $CT_ID -- systemctl daemon-reload
-msg_ok "Auto-logon enabled."
+msg_ok "Auto-logon configured."
 
 # 11. Redirect Console to Live Service Logs
 msg_info "Configuring console to auto-display live service logs..."
