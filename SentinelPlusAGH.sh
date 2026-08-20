@@ -125,15 +125,24 @@ SERVICE"
 pct exec $CT_ID -- bash -c "systemctl daemon-reload && systemctl enable --now sentinel.service" > /dev/null
 msg_ok "Sentinel service enabled and started."
 
-# 10. Configure Auto-Logon on Console (Community Scripts Method)
+# 10. Configure Auto-Logon on Console (Official Community Scripts Method)
 msg_info "Configuring Automatic Login..."
-pct exec $CT_ID -- bash -c "sed -i 's/GETTY_ARGS=\"--noclear\"/GETTY_ARGS=\"--noclear --autologin root\"/g' /etc/systemd/system/getty.target.wants/getty@tty1.service"
-pct exec $CT_ID -- bash -c "mkdir -p /etc/systemd/system/console-getty.service.d"
+pct exec $CT_ID -- bash -c "mkdir -p /etc/systemd/system/getty@tty1.service.d /etc/systemd/system/console-getty.service.d"
+
+# tty1 Override
+pct exec $CT_ID -- bash -c "cat <<EOF > /etc/systemd/system/getty@tty1.service.d/override.conf
+[Service]
+ExecStart=
+ExecStart=-/sbin/agetty --autologin root --noclear %I \$TERM
+EOF"
+
+# console-getty Override (Proxmox Web Console / Serial)
 pct exec $CT_ID -- bash -c "cat <<EOF > /etc/systemd/system/console-getty.service.d/override.conf
 [Service]
 ExecStart=
 ExecStart=-/sbin/agetty --autologin root --noclear --keep-baud console 115200,38400,9600 \$TERM
 EOF"
+
 pct exec $CT_ID -- systemctl daemon-reload
 msg_ok "Auto-logon configured."
 
