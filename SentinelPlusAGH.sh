@@ -2,7 +2,7 @@
 set -e
 
 # --- Configuration basique ---
-HOSTNAME="sentinel-agh"              # Nom d'hôte du conteneur
+HOSTNAME="sentinel"              # Nom d'hôte du conteneur
 STORAGE="local-lvm"                  # Stockage pour le disque LXC
 TEMPLATE_STORAGE="local"             # Stockage pour les templates
 RAM=512                              # RAM en Mo
